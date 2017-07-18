@@ -130,12 +130,16 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
   float noise_ax = 9.0;
   float noise_ay = 9.0;
 
+  float dt4 = pow(dt,4);
+  float dt3 = pow(dt,3);
+  float dt2 = pow(dt,2);
+
   ekf_.F_(0, 2) = ekf_.F_(1, 3) = dt;
 
-  ekf_.Q_ << pow(dt,4)*noise_ax/4.0, 0, pow(dt,3)*noise_ax/2.0, 0,
-            0, pow(dt,4)*noise_ay/4.0, 0, pow(dt,3)*noise_ay/2.0,
-            pow(dt,3)*noise_ax/2.0, 0, pow(dt,2)*noise_ax, 0,
-            0, pow(dt,3)*noise_ay/2.0, 0, pow(dt,2)*noise_ay;
+  ekf_.Q_ << dt4*noise_ax/4.0, 0, dt3*noise_ax/2.0, 0,
+            0, dt4*noise_ay/4.0, 0, dt3*noise_ay/2.0,
+            dt3*noise_ax/2.0, 0, dt2*noise_ax, 0,
+            0, dt3*noise_ay/2.0, 0, dt2*noise_ay;
 
   ekf_.Predict();
 
