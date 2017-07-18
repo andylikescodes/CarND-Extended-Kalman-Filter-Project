@@ -17,6 +17,7 @@ FusionEKF::FusionEKF() {
 
   previous_timestamp_ = 0;
 
+  cout << "debug 1" << endl;
   // initializing matrices
   R_laser_ = MatrixXd(2, 2);
   R_radar_ = MatrixXd(3, 3);
@@ -56,6 +57,7 @@ FusionEKF::FusionEKF() {
 
   VectorXd x_in = VectorXd(4);
   x_in << 1, 1, 1, 1;
+
   ekf_.Init(x_in, P_in, F_in, H_laser_, R_radar_, Q_in);
 
 }
@@ -88,10 +90,10 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       float rho = measurement_pack.raw_measurements_(0);
       float phi = measurement_pack.raw_measurements_(1);
 
-      float px = rho/sqrt(pow(tan(phi),2) + 1);
-      float py = rho*(tan(phi)/sqrt(pow(tan(phi),2) + 1));
+      float px = rho*cos(phi);
+      float py = rho*sin(phi);
 
-      ekf_.x_ << px, py, 1, 1;
+      ekf_.x_ << px, py, 0, 0;
 
 
     }
@@ -102,7 +104,7 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       float px = measurement_pack.raw_measurements_(0);
       float py = measurement_pack.raw_measurements_(1);
 
-      ekf_.x_ << px, py, 1, 1;
+      ekf_.x_ << px, py, 0, 0;
     }
     previous_timestamp_ = measurement_pack.timestamp_;
 
@@ -128,10 +130,7 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
   float noise_ax = 9.0;
   float noise_ay = 9.0;
 
-  ekf_.F_ << 1, 0, dt, 0,
-             0, 1, 0, dt,
-             0, 0, 1, 0,
-             0, 0, 0, 1;
+  ekf_.F_(0, 2) = ekf_.F_(1, 3) = dt;
 
   ekf_.Q_ << pow(dt,4)*noise_ax/4.0, 0, pow(dt,3)*noise_ax/2.0, 0,
             0, pow(dt,4)*noise_ay/4.0, 0, pow(dt,3)*noise_ay/2.0,
@@ -152,11 +151,14 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
 
   if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
     // Radar updates
+    
     ekf_.R_ = R_radar_;
+    ekf_.H_ = tools.CalculateJacobian(ekf_.x_);
     ekf_.UpdateEKF(measurement_pack.raw_measurements_);
   } else {
     // Laser updates
     ekf_.R_ = R_laser_;
+    ekf_.H_ = H_laser_;
     ekf_.Update(measurement_pack.raw_measurements_);
   }
 

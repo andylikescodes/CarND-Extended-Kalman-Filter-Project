@@ -1,9 +1,11 @@
+#include <iostream>
 #include "kalman_filter.h"
-#include "tools.h"
 #include <cmath>
+
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using namespace std;
 
 KalmanFilter::KalmanFilter() {}
 
@@ -33,11 +35,14 @@ void KalmanFilter::Update(const VectorXd &z) {
   TODO:
     * update the state by using Kalman Filter equations
   */
-  MatrixXd I = MatrixXd::Identity(2,2);
   MatrixXd y = z - H_ * x_;
   MatrixXd S = H_ * P_ * H_.transpose() + R_;
   MatrixXd K = P_ * H_.transpose() * S.inverse();
   x_ = x_ + K * y;
+
+  long x_size = x_.size();
+  MatrixXd I = MatrixXd::Identity(x_size, x_size);
+
   P_ = (I - K * H_) * P_;
 }
 
@@ -46,24 +51,40 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
   TODO:
     * update the state by using Extended Kalman Filter equations
   */
-  Tools tools;
 
-  float px = x_(0);
-  float py = x_(1);
-  float vx = x_(2);
-  float vy = x_(3);
+  float rho = sqrt(pow(x_(0),2)+pow(x_(1),2));
+  float phi = atan2(x_(1),x_(0));
+  float rhodot;
+  if (rho == 0){
+    cout << "error: dividing by zero" << endl;
+  }
+  else {
+    rhodot = (x_(0)*x_(2)+x_(1)*x_(3))/rho;
+  }
 
   VectorXd hx(3);
 
-  hx << sqrt(pow(px,2)+pow(py,2)), atan(py/px), (px*vx+py*vy)/sqrt(pow(px,2)+pow(py,2));
-  MatrixXd Hj = tools.CalculateJacobian(x_);
+  hx << rho, phi, rhodot;
 
-  MatrixXd I = MatrixXd::Identity(2,2);
   MatrixXd y = z - hx;
-  MatrixXd S = Hj * P_ * Hj.transpose() + R_;
-  MatrixXd K = P_ * Hj.transpose() * S.inverse();
+
+  // normalize the angle output after subtraction 
+  y(1) = atan2(sin(y(1)), cos(y(1)));
+  //while (y(1) < -M_PI)
+    //y(1) += 2 * M_PI;
+  //while (y(1) > M_PI)
+    //y(1) -= 2 * M_PI;
+
+  MatrixXd S = H_ * P_ * H_.transpose() + R_;
+  
+  MatrixXd K = P_ * H_.transpose() * S.inverse();
+  
   x_ = x_ + K * y;
-  P_ = (I - K * Hj) * P_;
+  
+  long x_size = x_.size();
+  MatrixXd I = MatrixXd::Identity(x_size, x_size);
+  P_ = (I - K * H_) * P_;
+  
 
 
 }
